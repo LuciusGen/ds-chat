@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>DeepSeek · чат</title>
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#161a21; --bg3:#1d222b; --line:#262c37;
+    --text:#e8ecf3; --muted:#8b95a7; --accent:#4f8cff; --accent2:#3f6fd8;
+    --user:#233046; --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    display:flex;flex-direction:column;height:100dvh;overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  header{
+    display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top));
+    background:var(--bg2);border-bottom:1px solid var(--line);flex:0 0 auto;
+  }
+  header h1{font-size:16px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .icon-btn{
+    background:transparent;border:0;color:var(--text);font-size:20px;line-height:1;
+    width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;
+  }
+  .icon-btn:active{background:var(--bg3)}
+  main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px 8px;scroll-behavior:smooth}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .msg{display:flex;gap:8px;flex-direction:column}
+  .bubble{
+    padding:11px 14px;border-radius:var(--radius);max-width:100%;
+    word-wrap:break-word;overflow-wrap:anywhere;
+  }
+  .user .bubble{background:var(--user);border-bottom-right-radius:6px;align-self:flex-end;max-width:88%}
+  .bot .bubble{background:var(--bg2);border:1px solid var(--line);border-bottom-left-radius:6px}
+  .meta{font-size:11px;color:var(--muted);display:flex;gap:10px;align-items:center;padding:0 4px}
+  .bot .meta{justify-content:flex-start}
+  .user .meta{justify-content:flex-end}
+  .meta button{background:none;border:0;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 4px;border-radius:6px}
+  .meta button:active{background:var(--bg3)}
+  .bubble p{margin:0 0 10px}
+  .bubble p:last-child{margin-bottom:0}
+  .bubble h1,.bubble h2,.bubble h3{margin:14px 0 8px;font-size:1.05em;line-height:1.3}
+  .bubble ul,.bubble ol{margin:6px 0 10px;padding-left:20px}
+  .bubble li{margin:3px 0}
+  .bubble code{background:#0b0d11;border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:.88em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .bubble pre{background:#0b0d11;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;margin:8px 0}
+  .bubble pre code{background:none;border:0;padding:0;font-size:13px;line-height:1.45;white-space:pre}
+  .bubble a{color:#7aa8ff}
+  .bubble blockquote{margin:8px 0;padding:2px 0 2px 10px;border-left:2px solid var(--line);color:var(--muted)}
+  .caret{display:inline-block;width:7px;height:1.05em;background:var(--accent);vertical-align:-2px;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .empty{color:var(--muted);text-align:center;margin-top:14vh;padding:0 16px}
+  .empty h2{color:var(--text);font-size:18px;margin:0 0 8px}
+  .empty p{font-size:14px;margin:0 0 18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .chip{background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:999px;
+    padding:9px 14px;font-size:13px;cursor:pointer}
+  .chip:active{background:var(--bg3)}
+  footer{
+    flex:0 0 auto;background:var(--bg2);border-top:1px solid var(--line);
+    padding:8px 10px;padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  }
+  .composer{max-width:760px;margin:0 auto;display:flex;gap:8px;align-items:flex-end}
+  textarea{
+    flex:1;resize:none;background:var(--bg3);color:var(--text);border:1px solid var(--line);
+    border-radius:14px;padding:11px 13px;font:16px/1.4 inherit;max-height:38vh;min-height:46px;
+    outline:none;
+  }
+  textarea:focus{border-color:#38455c}
+  .send{
+    width:46px;height:46px;border-radius:14px;border:0;background:var(--accent);color:#fff;
+    font-size:19px;display:grid;place-items:center;cursor:pointer;flex:0 0 auto;
+  }
+  .send:disabled{background:#2c3443;color:#6b7688}
+  .send:active:not(:disabled){background:var(--accent2)}
+  .drawer{
+    position:fixed;inset:0;z-index:20;display:none;background:rgba(0,0,0,.55);
+  }
+  .drawer.open{display:block}
+  .panel{
+    position:absolute;left:0;top:0;bottom:0;width:min(84vw,340px);background:var(--bg2);
+    border-right:1px solid var(--line);display:flex;flex-direction:column;
+    padding-top:env(safe-area-inset-top);transform:translateX(-100%);transition:transform .18s ease;
+  }
+  .drawer.open .panel{transform:none}
+  .panel-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .panel-head b{flex:1;font-size:15px}
+  .panel-list{flex:1;overflow-y:auto;padding:8px}
+  .chat-item{
+    padding:10px 12px;border-radius:12px;display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--text);
+    background:transparent;border:0;width:100%;text-align:left;font:inherit;
+  }
+  .chat-item:active{background:var(--bg3)}
+  .chat-item.active{background:var(--bg3)}
+  .chat-item .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+  .chat-item .d{font-size:11px;color:var(--muted);flex:0 0 auto}
+  .chat-item .x{color:var(--muted);border:0;background:none;font-size:15px;padding:4px 6px;border-radius:8px}
+  .btn{
+    border:1px solid var(--line);background:var(--bg3);color:var(--text);border-radius:12px;
+    padding:11px 14px;font:15px/1 inherit;cursor:pointer;width:100%;
+  }
+  .btn:active{background:#242b36}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:active{background:var(--accent2)}
+  dialog{
+    border:1px solid var(--line);background:var(--bg2);color:var(--text);border-radius:18px;
+    padding:0;width:min(92vw,420px);
+  }
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .dlg-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+  .dlg-body h3{margin:0;font-size:17px}
+  .dlg-body label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+  .dlg-body input,.dlg-body select{
+    width:100%;background:var(--bg3);border:1px solid var(--line);color:var(--text);
+    border-radius:12px;padding:11px 12px;font:16px/1.3 inherit;outline:none;
+  }
+  .hint{font-size:12px;color:var(--muted);line-height:1.45}
+  .row{display:flex;gap:8px}
+  .err{color:#ff9b9b;font-size:13px}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#f5f6f8;--bg2:#ffffff;--bg3:#eef1f5;--line:#dfe4ec;--text:#141821;--muted:#67707f;--user:#dce8ff}
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="icon-btn" id="menu" aria-label="Список чатов">☰</button>
+  <h1 id="title">Новый чат</h1>
+  <button class="icon-btn" id="newChat" aria-label="Новый чат">＋</button>
+  <button class="icon-btn" id="settingsBtn" aria-label="Настройки">⚙</button>
+</header>
+
+<main id="main"><div class="wrap" id="wrap"></div></main>
+
+<footer>
+  <form class="composer" id="form">
+    <textarea id="input" rows="1" placeholder="Спросите что-нибудь…" enterkeyhint="send"></textarea>
+    <button class="send" id="send" type="submit" aria-label="Отправить">↑</button>
+  </form>
+</footer>
+
+<div class="drawer" id="drawer">
+  <div class="panel">
+    <div class="panel-head">
+      <b>Чаты</b>
+      <button class="icon-btn" id="closeDrawer" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="panel-list" id="chatList"></div>
+    <div style="padding:10px;border-top:1px solid var(--line)">
+      <button class="btn primary" id="drawerNew">Новый чат</button>
+    </div>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-body">
+    <h3>Настройки</h3>
+    <div>
+      <label for="apiKey">API-ключ OpenCode (oc_sk_…)</label>
+      <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="oc_sk_...">
+      <div class="hint" style="margin-top:6px">Хранится только на этом устройстве. Создать: Console → Account → Personal API keys.</div>
+    </div>
+    <div>
+      <label for="modelSel">Модель</label>
+      <select id="modelSel">
+        <option value="deepseek-v4.1-flash">DeepSeek V4.1 Flash — быстрая, дешёвая</option>
+        <option value="deepseek-v4-pro">DeepSeek V4 Pro — умнее, дороже</option>
+      </select>
+    </div>
+    <div class="hint">Если ответ приходит с ошибкой 403 — включите в Console: Settings → Privacy → Regions → Global.</div>
+    <div class="row">
+      <button class="btn" id="cancelDlg" type="button">Отмена</button>
+      <button class="btn primary" id="saveDlg" type="button">Сохранить</button>
+    </div>
+    <button class="btn" id="wipe" type="button" style="color:#ff9b9b">Удалить все чаты</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+  const API = "https://opencode.ai/inference/go/openai/v1/chat/completions";
+  const LS_KEY = "ds.key", LS_CHATS = "ds.chats.v1", LS_MODEL = "ds.model";
+  const $ = (s) => document.querySelector(s);
+
+  const state = {
+    chats: [],
+    id: null,
+    model: localStorage.getItem(LS_MODEL) || "deepseek-v4.1-flash",
+    busy: false,
+  };
+
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const sid = () => "ses_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  function load() {
+    try { state.chats = JSON.parse(localStorage.getItem(LS_CHATS) || "[]"); } catch { state.chats = []; }
+    if (!Array.isArray(state.chats)) state.chats = [];
+  }
+  function persist() {
+    try { localStorage.setItem(LS_CHATS, JSON.stringify(state.chats)); } catch (e) { console.warn(e); }
+  }
+  function current() { return state.chats.find((c) => c.id === state.id); }
+
+  function newChat(activate = true) {
+    const c = { id: uid(), title: "Новый чат", session: sid(), model: state.model, created: Date.now(), messages: [], cost: 0 };
+    state.chats.unshift(c);
+    if (activate) state.id = c.id;
+    persist();
+    if (activate) { render(); renderList(); }
+    return c;
+  }
+
+  // ---- минимальный markdown ----
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function inline(s) {
+    return esc(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+      .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  }
+  function md(src) {
+    const lines = String(src).split("\n");
+    let out = "", list = null, inCode = false, code = [], quote = false;
+    const closeList = () => { if (list) { out += `</${list}>`; list = null; } };
+    const closeQuote = () => { if (quote) { out += "</blockquote>"; quote = false; } };
+    for (const raw of lines) {
+      const line = raw.replace(/\s+$/, "");
+      if (line.trim().startsWith("```")) {
+        if (inCode) { out += `<pre><code>${esc(code.join("\n"))}</code></pre>`; code = []; inCode = false; }
+        else { closeList(); closeQuote(); inCode = true; }
+        continue;
+      }
+      if (inCode) { code.push(raw); continue; }
+      if (!line.trim()) { closeList(); closeQuote(); continue; }
+      const h = line.match(/^(#{1,3})\s+(.*)$/);
+      if (h) { closeList(); closeQuote(); out += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
+      if (/^>\s?/.test(line)) { if (!quote) { closeList(); out += "<blockquote>"; quote = true; } out += inline(line.replace(/^>\s?/, "")) + "<br>"; continue; }
+      closeQuote();
+      const ul = line.match(/^\s*[-*+]\s+(.*)$/), ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+      if (ul || ol) {
+        const want = ul ? "ul" : "ol";
+        if (list !== want) { closeList(); out += `<${want}>`; list = want; }
+        out += `<li>${inline((ul || ol)[1])}</li>`;
+        continue;
+      }
+      closeList();
+      out += `<p>${inline(line)}</p>`;
+    }
+    if (inCode) out += `<pre><code>${esc(code.join("\n"))}</code></pre>`;
+    closeList(); closeQuote();
+    return out;
+  }
+
+  // ---- рендер ----
+  const wrap = $("#wrap");
+  function bubbleEl(m) {
+    const d = document.createElement("div");
+    d.className = "msg " + (m.role === "user" ? "user" : "bot");
+    const b = document.createElement("div");
+    b.className = "bubble";
+    d.appendChild(b);
+    if (m.role === "assistant") {
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const copy = document.createElement("button");
+      copy.textContent = "копировать";
+      copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(m.content); copy.textContent = "скопировано"; }
+        catch { copy.textContent = "не вышло"; }
+        setTimeout(() => (copy.textContent = "копировать"), 1500);
+      };
+      meta.appendChild(copy);
+      if (m.info) { const s = document.createElement("span"); s.textContent = m.info; meta.appendChild(s); }
+      d.appendChild(meta);
+    }
+    d.__b = b;
+    return d;
+  }
+
+  function render() {
+    const c = current();
+    wrap.innerHTML = "";
+    $("#title").textContent = c ? (c.title || "Новый чат") : "Новый чат";
+    if (!c || !c.messages.length) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.innerHTML = `<h2>Чем помочь?</h2><p>DeepSeek через OpenCode Go. История чатов хранится на этом устройстве.</p>
+        <div class="chips">
+          <button class="chip">Объясни просто, как работает VPN</button>
+          <button class="chip">Составь план тренировок на неделю</button>
+          <button class="chip">Переведи текст на английский</button>
+        </div>`;
+      e.querySelectorAll(".chip").forEach((ch) => (ch.onclick = () => {
+        $("#input").value = ch.textContent;
+        $("#input").focus();
+        autoGrow();
+      }));
+      wrap.appendChild(e);
+      return;
+    }
+    c.messages.forEach((m) => {
+      const el = bubbleEl(m);
+      el.__b.innerHTML = m.role === "user" ? `<p>${esc(m.content).replace(/\n/g, "<br>")}</p>` : md(m.content);
+      wrap.appendChild(el);
+    });
+    scrollDown();
+  }
+
+  function scrollDown(force) {
+    const m = $("#main");
+    const near = m.scrollHeight - m.scrollTop - m.clientHeight < 160;
+    if (force || near) m.scrollTop = m.scrollHeight;
+  }
+
+  function renderList() {
+    const box = $("#chatList");
+    box.innerHTML = "";
+    if (!state.chats.length) {
+      box.innerHTML = '<div class="hint" style="padding:10px">Пока пусто</div>';
+      return;
+    }
+    state.chats.forEach((c) => {
+      const b = document.createElement("button");
+      b.className = "chat-item" + (c.id === state.id ? " active" : "");
+      b.innerHTML = `<span class="t">${esc(c.title || "Новый чат")}</span><span class="d">${c.messages.length ? new Date(c.created).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) : ""}</span>`;
+      b.onclick = () => {
+        state.id = c.id;
+        closeDrawer();
+        render(); renderList();
+      };
+      const x = document.createElement("button");
+      x.className = "x"; x.textContent = "✕"; x.setAttribute("aria-label", "Удалить чат");
+      x.onclick = (ev) => {
+        ev.stopPropagation();
+        state.chats = state.chats.filter((k) => k.id !== c.id);
+        if (state.id === c.id) { state.id = state.chats[0] ? state.chats[0].id : null; if (!state.id) newChat(false); }
+        persist(); render(); renderList();
+      };
+      b.appendChild(x);
+      box.appendChild(b);
+    });
+  }
+
+  function autoGrow() {
+    const t = $("#input");
+    t.style.height = "auto";
+    t.style.height = Math.min(t.scrollHeight, window.innerHeight * 0.38) + "px";
+  }
+
+  function setBusy(v) {
+    state.busy = v;
+    $("#send").disabled = v;
+  }
+
+  async function send(text) {
+    const key = localStorage.getItem(LS_KEY);
+    if (!key) { openSettings(true); return; }
+    let c = current() || newChat();
+    const m = { role: "user", content: text };
+    c.messages.push(m);
+    if (c.title === "Новый чат") { c.title = text.slice(0, 42); }
+    persist(); render();
+
+    const el = document.createElement("div");
+    el.className = "msg bot";
+    el.innerHTML = '<div class="bubble"><span class="caret"></span></div>';
+    wrap.appendChild(el);
+    scrollDown(true);
+    setBusy(true);
+
+    const target = { role: "assistant", content: "", info: "" };
+    let raw = "";
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + key,
+          "x-opencode-session": c.session,
+          "User-Agent": "ds-chat-web/1.0",
+        },
+        body: JSON.stringify({
+          model: c.model || state.model,
+          messages: c.messages.filter((x) => x.role !== "system").map((x) => ({ role: x.role, content: x.content })),
+          stream: true,
+          stream_options: { include_usage: true },
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error("HTTP " + res.status + "\n" + body.slice(0, 400));
+      }
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "", usage = null;
+      const b = el.querySelector(".bubble");
+      let lastPaint = 0;
+
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const block = buf.slice(0, idx); buf = buf.slice(idx + 2);
+          for (const line of block.split("\n")) {
+            if (!line.startsWith("data:")) continue;
+            const data = line.slice(5).trim();
+            if (!data || data === "[DONE]") continue;
+            let obj; try { obj = JSON.parse(data); } catch { continue; }
+            if (obj.usage) usage = obj.usage;
+            const ch = (obj.choices || [])[0];
+            const piece = ch && ch.delta && (ch.delta.content || "");
+            if (piece) {
+              raw += piece;
+              const now = performance.now();
+              if (now - lastPaint > 60) {
+                b.innerHTML = md(raw) + '<span class="caret"></span>';
+                lastPaint = now;
+                scrollDown();
+              }
+            }
+          }
+        }
+      }
+
+      target.content = raw.trim() || "(пустой ответ)";
+      if (usage) {
+        const cost = (usage.opencode && usage.opencode.cost) || usage.cost || 0;
+        c.cost = +(c.cost || 0) + Number(cost || 0);
+        target.info = `${usage.prompt_tokens || "?"}→${usage.completion_tokens || "?"} ток · $${(Number(cost) || 0).toFixed(5)}`;
+      }
+      c.messages.push(target);
+      persist();
+      const fresh = bubbleEl(target);
+      fresh.__b.innerHTML = md(target.content);
+      el.replaceWith(fresh);
+      scrollDown();
+    } catch (e) {
+      const msg = String(e && e.message || e);
+      let hint = "";
+      if (/401/.test(msg)) hint = "Ключ неверный или отозван. Проверьте его в настройках (⚙).";
+      else if (/403/.test(msg)) hint = "403: включите Console → Settings → Privacy → Regions → Global, и убедитесь, что Go активен.";
+      else if (/Failed to fetch|network/i.test(msg)) hint = "Нет связи с сервером. Проверьте интернет.";
+      el.querySelector(".bubble").innerHTML =
+        `<div class="err"><b>Ошибка.</b> ${esc(hint || "")}</div>` +
+        `<pre style="white-space:pre-wrap;font-size:12px;color:#c9d1e0">${esc(msg).slice(0, 600)}</pre>`;
+      scrollDown(true);
+    } finally {
+      setBusy(false);
+      renderList();
+    }
+  }
+
+  // ---- UI ----
+  const drawer = $("#drawer");
+  const openDrawer = () => { renderList(); drawer.classList.add("open"); };
+  const closeDrawer = () => drawer.classList.remove("open");
+  $("#menu").onclick = openDrawer;
+  $("#closeDrawer").onclick = closeDrawer;
+  drawer.onclick = (e) => { if (e.target === drawer) closeDrawer(); };
+  const startNew = () => { newChat(); closeDrawer(); $("#input").focus(); };
+  $("#newChat").onclick = startNew;
+  $("#drawerNew").onclick = startNew;
+
+  const dlg = $("#dlg");
+  function openSettings(force) {
+    $("#apiKey").value = localStorage.getItem(LS_KEY) || "";
+    $("#modelSel").value = state.model;
+    $("#wipe").style.display = force ? "none" : "block";
+    $("#cancelDlg").style.display = force ? "none" : "block";
+    dlg.showModal();
+  }
+  $("#settingsBtn").onclick = () => openSettings(false);
+  $("#cancelDlg").onclick = () => dlg.close();
+  $("#saveDlg").onclick = () => {
+    const k = $("#apiKey").value.trim();
+    if (k) localStorage.setItem(LS_KEY, k); else localStorage.removeItem(LS_KEY);
+    state.model = $("#modelSel").value;
+    localStorage.setItem(LS_MODEL, state.model);
+    const c = current(); if (c) { c.model = state.model; persist(); }
+    dlg.close();
+  };
+  $("#wipe").onclick = () => {
+    if (!confirm("Удалить все чаты на этом устройстве?")) return;
+    state.chats = []; state.id = null; persist(); newChat(); render(); renderList(); dlg.close();
+  };
+
+  const ta = $("#input");
+  ta.addEventListener("input", autoGrow);
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      $("#form").requestSubmit();
+    }
+  });
+  $("#form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = ta.value.trim();
+    if (!text || state.busy) return;
+    ta.value = ""; autoGrow();
+    send(text);
+  });
+
+  // ---- старт ----
+  load();
+  if (!state.chats.length) newChat(); else state.id = state.chats[0].id;
+  render(); renderList();
+  if (!localStorage.getItem(LS_KEY)) setTimeout(() => openSettings(true), 300);
+})();
+</script>
+</body>
+</html>
